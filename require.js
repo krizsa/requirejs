@@ -1088,9 +1088,9 @@ var require;
                 }
             }
         }
-
+		
         //Check for exit conditions.
-        if (!hasLoadedProp && !waiting.length
+		if (!hasLoadedProp && !waiting.length
             //>>excludeStart("requireExcludePlugin", pragmas.requireExcludePlugin);
             && (!pIsWaiting || !pIsWaiting(context))
             //>>excludeEnd("requireExcludePlugin");
@@ -1107,6 +1107,7 @@ var require;
             err.requireModules = noLoads;
             req.onError(err);
         }
+		
         if (stillLoading) {
             //Something is still waiting to load. Wait for it.
             context.isCheckLoaded = false;
@@ -1129,9 +1130,20 @@ var require;
         //module definitions.
         if (pOrderDeps) {
             pOrderDeps(context);
-        }
-        //>>excludeEnd("requireExcludePlugin");
+        }		
+        //>>excludeEnd("requireExcludePlugin");	
 
+        if (context.externalWait && context.externalWait()) {
+            //Something is still waiting to load. Wait for it.
+			context.isCheckLoaded = false;
+            if (isBrowser || isWebWorker) {
+                setTimeout(function () {
+                    req.checkLoaded(contextName);
+                }, 50);
+            }
+            return;
+        }
+		
         //>>excludeStart("requireExcludeModify", pragmas.requireExcludeModify);
         //Before defining the modules, give priority treatment to any modifiers
         //for modules that are already defined.
@@ -1191,8 +1203,8 @@ var require;
             //Make sure we reset to default context.
             s.ctxName = defContextName;
             s.isDone = true;
-            if (req.callReady) {
-                req.callReady();
+            if (req.callReady) {				
+				req.callReady();
             }
         }
     };
