@@ -13,13 +13,14 @@
 	var bEmbed;	
 	var version;
 	var id = "O3Demo";
+	var name = "O3Demo-8A66ECAC-63FD-4AFA-9D42-3034D18C88F4";
 	var approvalDiv;
     //A place to hold callback functions
     require._jsonp = {};
 
 	function detect() {
-		var version = "none";
-		var name = "O3Demo-8A66ECAC-63FD-4AFA-9D42-3034D18C88F4";
+
+		var version;
 		
 		if (window.external && window.external.o3) {    
 			version = window.external.o3.versionInfo.match(/v([\d]+\.[\d]+)/)[1];        
@@ -48,7 +49,7 @@
 			}
 		}
 		
-		return version;
+		return version ? version : "none";
 	};
 	
 	function sniff() {
@@ -72,7 +73,8 @@
 			
 			
 		out.push(bEmbed
-			? '<embed id="' + id + '" width="' + width 
+			? '<embed id="' + id + '" type="application/' + name 
+				+ '" width="' + width 
 				+ '" height="' + height + '" '
 			: '<object id="' + id + '" width="' + width 
 				+ '" height="' + height + '"' 
@@ -180,7 +182,7 @@
 				//cb();
 			}		
 			
-			var approve = function() {
+			var approve = function(obj) {
 				var url = obj.approvalURL;
 				
 				var div = document.getElementById("test");
