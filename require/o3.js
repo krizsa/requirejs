@@ -9,13 +9,81 @@
 
 (function () {
     var countId = 0;
-	var finished = false;
-	var started = false;
 	var o3 = 0;
-	var moduleNames = [];
+	var bEmbed;	
+	var version;
+	var id = "O3Demo";
+	var approvalDiv;
     //A place to hold callback functions
     require._jsonp = {};
 
+	function detect() {
+		var version = "none";
+		var name = "O3Demo-8A66ECAC-63FD-4AFA-9D42-3034D18C88F4";
+		
+		if (window.external && window.external.o3) {    
+			version = window.external.o3.versionInfo.match(/v([\d]+\.[\d]+)/)[1];        
+			embedded = true;
+		}
+		
+		else { 
+			try {
+				var axo = new ActiveXObject(name);
+				version = axo.versionInfo.match(/v([\d]+\.[\d]+)/)[1];
+			}
+			catch (e) {}
+		}
+		
+		if (navigator.plugins && !version) {
+			if (navigator.plugins[name]) {
+				version = navigator.plugins[name].description.match(/v([\d]+\.[\d]+)/)[1];
+			}
+			else {           
+				// try sniffing the mimeTypes
+				name = "application/" + name;
+				for (var i = 0, l = navigator.mimeTypes.length; i < l; ++i) {
+					if (navigator.mimeTypes[i].type == name)
+						version = "0.9";
+				}
+			}
+		}
+		
+		return version;
+	};
+	
+	function sniff() {
+		var sAgent = navigator.userAgent.toLowerCase();
+		var is_opera     = sAgent.indexOf("opera") !== -1;
+		var is_konqueror = sAgent.indexOf("konqueror") != -1;
+		var is_safari    = !is_opera && ((navigator.vendor
+				&& navigator.vendor.match(/Apple/) ? true : false)
+				|| sAgent.indexOf("safari") != -1 || is_konqueror);
+		var is_ie        = (document.all && !is_opera && !is_safari);
+		bEmbed           = !(is_ie && !is_opera);
+	};
+	
+	function createHtml(options) {
+		sniff();
+		var out = [],
+			width = 0,
+			height = 0
+			clsid = '8A66ECAC-63FD-4AFA-9D42-3034D18C88F4';
+			
+			
+			
+		out.push(bEmbed
+			? '<embed id="' + id + '" width="' + width 
+				+ '" height="' + height + '" '
+			: '<object id="' + id + '" width="' + width 
+				+ '" height="' + height + '"' 
+				+ ' classid="CLSID:' + clsid + '"' 
+				+ '>');
+
+		out.push(bEmbed ? '> </embed>' : '</object>');
+			
+		return out.join("");
+	};	
+	
     require.plugin({
 		prefix: "o3",
 
@@ -33,7 +101,7 @@
          */
         newContext: function (context) {
             require.mixin(context, {
-                jsonpWaiting: []
+                o3Waiting: []
             });
         },
 
@@ -44,24 +112,28 @@
 			var context = require.s.contexts[contextName];
 			context.loaded[name] = false;
 			require.ready(function() {
-				if (!o3){					
-					var objHtml = '<object id="o3demo" width="100"'
-						+ ' height="100" classid="CLSID:8A66ECAC-63FD-4AFA-9D42-3034D18C88F4"' 
-						+ '>';
+				if (!o3){
+					version = detect();
+					if (version == "none")
+						return; 
+					
+					var objHtml = createHtml();
 					document.body.appendChild(
 					 document.createElement("div")).innerHTML = objHtml;        
 				  
-					o3 = document.getElementById("o3demo");
+					o3 = document.getElementById(id);
 				}	
-					//o3 = new ActiveXObject("O3Demo-8A66ECAC-63FD-4AFA-9D42-3034D18C88F4");
-
+					
+			
 				//var context = require.s.contexts[contextName];
-				alert(name);
 				o3.require(name);
-				context.loaded[name] = true;
-				moduleNames.push(name);
-				//require.checkLoaded(contextName);
+				//moduleNames.push(name);
+				require.checkLoaded(contextName);
 				//head.appendChild(node);			
+				context.o3Waiting.push({
+					name: name
+				});
+				context.loaded[name] = true;
 			});
         },
 
@@ -77,37 +149,66 @@
          * Called to determine if a module is waiting to load.
          */
         isWaiting: function (context) {
-			false;//return !loaded;
+			return false;//return !loaded;
+        },
+        
+        beforeFinalCallback : function(cb, context){
+   			//loadmodules
+            /*setTimeout(function(){
+                context.defined[context.o3Waiting[0].name] = {pretend: "o3"};
+                cb();
+            }, 1000);*/
+            
+			
+            if (!context.o3Waiting.length) 
+				return;    
+
+			var loaded = function() {
+				alert("components loaded");				
+				finished = true;
+				//cb();
+				
+				for (var i=0; i<context.o3Waiting.length; i++) {
+				    var name = context.o3Waiting[i].name;
+					context.defined[name] = o3[name];
+				}
+                cb();
+			}
+					
+			var loaderror = function() {
+				alert('kabooom!!!');
+				//cb();
+			}		
+			
+			var approve = function() {
+				var url = obj.approvalURL;
+				
+				var div = document.getElementById("test");
+				if (approvalDiv) {
+					approvalDiv.innerHTML = "";
+				}
+				else {
+					approvalDiv = document.body.appendChild(
+					  document.createElement("div")).innerHTML = 
+						"<iframe src='" + url + "'></iframe>";			
+				}
+			}
+			
+			o3.ondone = loaded;
+			//o3obj.onprogress = progress;
+			o3.onfail = loaderror;
+			o3.onapprove = approve;            			
+			o3.loadModules();
+			
         },
 
         /**
          * Called when all modules have been loaded.
          */
         orderDeps: function (context) {
-			if (!started) {
-				started = true
-				var loaded = function() {
-					alert("components loaded");				
-					finished = true;
-				}
-						
-				var loaderror = function() {
-					alert('kabooom!!!');
-				}		
-				
-				var approve = function() {
-					alert('approve');
-				}
-				
-				o3.ondone = loaded;
-				//o3obj.onprogress = progress;
-				o3.onfail = loaderror;
-				o3.onapprove = approve;            			
-				o3.loadModules();
-				context.externalWait = function() {					
-					return !finished;
-				}
-			}
+            return;
         }
-    });
+		
+
+	});
 }()); 
